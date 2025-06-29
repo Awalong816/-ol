@@ -1,0 +1,935 @@
+import cv2
+import numpy as np
+import pygetwindow as gw #屏幕捕获模块(区分于截图)
+# pyautogui会与tk冲突导致界面不正常显示
+import pyautogui as gui
+import keyboard
+import os
+import sys
+import json#保存设置
+import ast#字符串直接转列表或元组
+import time
+import tkinter as tk
+from tkinter import ttk#树表
+from tkinter import font
+from tkinter import messagebox
+import threading as thr#线程
+
+#准备阶段
+yxpath = os.path.abspath(__file__)#获得运行路径
+yxdir = os.path.dirname(yxpath)#获得上级目录
+print(f"运行路径:{yxpath}")
+print(f"运行目录:{yxdir}")
+exesavepath = sys.executable
+exesavedir = os.path.dirname(exesavepath)
+print(f"运行依赖的exe存储路径:{exesavepath}")
+print(f"运行依赖的exe储存目录:{exesavedir}")
+if exesavepath.endswith("python.exe"):
+    print("py运行")
+    basedir = yxdir
+else:
+    print("exe运行")
+    basedir = exesavedir
+
+# print(yxpath)
+wjname = ""
+if yxpath.endswith(".py"):
+    wjname = (yxpath[:-3])
+elif yxpath.endswith(".exe"):
+    wjname = (yxpath[:-4])
+# print(wjname)
+kufile = f"{basedir}\DJJBlocal_picku"
+configpath = f"{basedir}\DJJB_config.json"
+print(f"图片库文件路径:{kufile}")
+
+sserr = 0
+#检测路径是否存在
+if os.path.exists(kufile):#exists-所有范围
+    print("检测到本地库文件，正在读取...")
+    print("读取成功")
+else:
+    print("未能检测到本地库文件，正在进行创建...")
+    os.makedirs(kufile)
+    print(f"本地图库创建成功,路径:{kufile}")
+
+morenmemoryset = {
+            "jtnamearea":(830,600,385,700),
+            "jtatuobtnarea":(2050,1600,160,160),
+            "atuoclick":(2130,1680),
+            "jtbarea1":(1095,610,125,135),
+            "jtbarea2":(1095,850,125,135),
+            "jtbarea3":(1095,1100,125,135),
+            "mousemove1":(2080,695),
+            "mousemove2":(2080,945),
+            "mousemove3":(2080,1185),
+            "repeatbtn":(1320,1350),
+            "surebtn":(1400,1050),
+        }
+
+if not os.path.exists(configpath):#exists:检察是参数路径是否存在指定文件
+    print("正在创建配置文件...")
+    with open(configpath, "w") as setfile:
+        json.dump(morenmemoryset,setfile)
+        print("配置文件创建完成")
+        setfile.close()
+else:
+    print("已存在配置文件，正在读取配置文件...")
+    ctm = os.path.getctime(configpath)
+    xtm = os.path.getmtime(configpath)
+    print(f"配置文件创建时间:<{time.ctime(ctm)}>")
+    print(f"文件上次修改时间:<{time.ctime(xtm)}>")
+
+#截图区域
+global savedata
+with open(configpath, "r") as savefile:  # "r":文件存在时，读取已有的内容(保存的内容才有意义)
+    savedata = json.load(savefile)
+    print(f"savedata:\n{savedata}")
+    savefile.close()
+
+global ssrgbnp
+ssrgbnp = None
+global atuobtnnp
+atuobtnnp = None
+global atkaimlist
+atkaimlist = []
+
+#函数
+def Appclose():
+    print("运行结束")
+    App.destroy()
+    exit()
+
+#客户端
+class Appwindow(tk.Tk):
+    def __init__(self):
+        super().__init__()#继承父类
+        self.geometry("800x600")
+        self.resizable(False, False)
+
+        self.title("终极兹克索尔")
+        self.version = "v-25.6.28\n仅供学习交流使用"
+        self.lifewindow = "未知"
+        self.jingdu = 0.92
+        self.stop = 0
+        self.atk = 0
+        self.bigfg = font.Font(size=11)
+        self.aimmuban = {}
+        self.youxianjibiao = {}
+        self.modoptions = ["正常模式","调试模式"]
+        self.mod = tk.IntVar(value=1)
+        self.auto = tk.IntVar(value=0)
+        self.auto.trace_add("write", self.atuopass)#变量追踪器，"write"表示被写入
+        self.mod.trace_add("write", self.modcs)
+
+        with open(configpath,"r") as savefile:
+            self.savedata = json.load(savefile)
+            # print(f"名字区域:{self.savedata['jtnamearea']}")
+            # print(f"自动按钮:{self.savedata['jtatuobtnarea']}")
+            savefile.close()
+
+        self.szline = self.savedata["jtbarea2"][1]-35
+        self.zxline = self.savedata["jtbarea3"][1]+35
+
+        #label
+        self.neikuang = tk.Canvas(self,width=800,height=600)#画布
+        self.neikuang.pack()
+        self.neikuang.create_rectangle(100,140,700,430,outline="#777777")#和cv一样左上右下xy坐标
+
+        self.ttlversion = tk.Label(self,text=self.version)
+        self.ttlversion.pack()
+        self.ttlversion.place(x=600,y=520)
+
+        self.biaoti1 = tk.Label(self, text="当前窗口:")
+        self.biaoti1.pack()
+        self.biaoti1.place(x=120, y=8)
+
+        self.biaoti2 = tk.Label(self, text=f"当前模式:{self.modoptions[self.mod.get()-1]}")
+        self.biaoti2.pack()
+        self.biaoti2.place(x=290,y=380)
+
+        #text
+        self.txtbox1 = tk.Text(self,width=25,height=2)
+        self.txtbox1.pack()
+        self.txtbox1.place(x=120,y=56)
+        self.txtbox1.insert("1.0",self.lifewindow)
+
+        #button
+        self.btn1 = tk.Button(self,text="开始运行",width=15,fg="#FF0A36",bg="#FFFFFF",command=self.run)
+        self.btn1.config(relief="raised",borderwidth=8)
+        self.btn1.pack()
+        self.btn1.place(x=280,y=460)
+
+        self.btn2 = tk.Button(self, text="获取窗口", width=10, fg="#000000", bg="#FFFFFF",command=self.getlwindow)
+        self.btn2.config(relief="raised", borderwidth=5)
+        self.btn2.pack()
+        self.btn2.place(x=510, y=50)
+
+        self.btn3 = tk.Button(self, text="导入目标", width=12 ,fg="#000000", bg="#FFFFFF",command=self.inputpic)
+        self.btn3.config(relief="raised", borderwidth=5)
+        self.btn3.pack()
+        self.btn3.place(x=180, y=195)
+
+        self.btn4 = tk.Button(self, text="更新图库", width=12, fg="#000000", bg="#FFFFFF",command=self.updatepicku)
+        self.btn4.config(relief="raised", borderwidth=5)
+        self.btn4.pack()
+        self.btn4.place(x=420, y=195)
+
+        self.btn5 = tk.Button(self, text="优先级调整", width=12, fg="#000000", bg="#FFFFFF", command=self.queuespeed)
+        self.btn5.config(relief="raised", borderwidth=5)
+        self.btn5.pack()
+        self.btn5.place(x=180, y=295)
+
+        self.btn6 = tk.Button(self, text="全局设置", width=12, fg="#000000", bg="#FFFFFF", command=self.modchoose)
+        self.btn6.config(relief="raised", borderwidth=5)
+        self.btn6.pack()
+        self.btn6.place(x=420, y=295)
+
+        self.xuanze1 = tk.Checkbutton(self,text="进入战斗后切换自动",variable=self.auto)
+        self.xuanze1.pack()
+        self.xuanze1.place(x=270, y=125)
+
+    def escjianting(self):
+        print("键盘监听esc开始")
+        while self.stop != 1:
+            if keyboard.is_pressed("esc"):
+                if self.stop == 0:
+                    self.stop = 1
+                    tk.messagebox.showinfo("状态","esc被按下,循环识别结束")
+                    self.btn1["text"] = "开始运行"
+                    self.btn1["state"] = tk.NORMAL
+            time.sleep(0.1)#避免占用过多
+
+    def run(self):
+        # 守护线程--监听线程：监听键盘，在主进程退出时守护线程也会结束
+        self.stop = 0
+        print("开始运行")
+        runerr = 0
+        # if self.lifewindow.title == "未知":
+        #     tk.messagebox.showerror("警告","请先进行窗口捕获")
+        #     runerr = 1
+        # elif self.lifewindow.title != "火影忍者online":
+        #     tk.messagebox.showerror("警告","请获取正确的游戏窗口")
+        #     runerr = 1
+
+        if self.aimmuban == {} and runerr == 0:
+            tk.messagebox.showerror("错误","目标图片库为空")
+            runerr = 1
+
+        if runerr == 0:
+            self.jianting = thr.Thread(target=self.escjianting)
+            self.jianting.start()
+            tk.messagebox.showinfo("注意","脚本即将开始运行，使用推荐分辨率{3072x1920}，期间请不要移动游戏窗口，且出击后会自动停止\n***按下ESC可以立即终止***")
+            #截图线程保证客户端可用
+            time.sleep(0.5)
+            jtxc = thr.Thread(target=self.jtsb1)#传入模板表
+            jtxc.start()
+            self.btn1["state"] = tk.DISABLED
+            self.btn1["text"] = "按下esc退出"
+
+    def getshot(self,area):
+        # print("截图")
+        jt = gui.screenshot(region=area)
+        return jt
+
+    def jtsb1(self):
+        n = 0
+        if self.mod.get() == 1:
+            limit = 12000#正常模式保险
+        else:
+            limit = 50#调试模式保险
+        while self.stop != 1 and n < limit:
+
+            try:#三保险
+                if not self.jianting.is_alive():
+                    tk.messagebox.showerror("错误","键盘监听线程未知原因结束，强制退出，如持续存在请重启程序")
+                    self.btn1["text"] = "开始运行"
+                    self.btn1["state"] = tk.NORMAL
+                    return 0
+            except Exception as err:
+                tk.messagebox.showerror("错误",f"键盘监听线程未知原因消失:{err}，强制退出，如持续存在请重启程序")
+                self.btn1["text"] = "开始运行"
+                self.btn1["state"] = tk.NORMAL
+                return 0
+
+            print(f"App.stop:{self.stop}\n")
+            jietu1 = self.getshot(self.savedata["jtnamearea"])
+            npjtrgb = np.array(jietu1)
+            npjtbgr = cv2.cvtColor(npjtrgb, cv2.COLOR_RGB2BGR)
+            npjtgray = cv2.cvtColor(npjtbgr, cv2.COLOR_BGR2GRAY)  # 转为灰度图像
+            # cv2.imshow("jt",npjtbgr)
+            # cv2.waitKey(0)
+            n = 0
+            for aim in self.aimmuban:
+                n = n + 1
+                nowmuban = self.aimmuban[aim]
+                # print(f"第<{n}>个目标<{aim}>,np数组表示:\n{nowmuban}")
+                pct = cv2.matchTemplate(  # 计算模板在截图中各个位置的匹配度
+                    npjtgray,  # 目标
+                    nowmuban,  # 模板
+                    cv2.TM_CCOEFF_NORMED  # 模板匹配方法-这里是越大越像
+                    # 方法 归一化方便取值
+                    # TM_SQDIFF - 平方差匹配，越小越像
+                    # TM_SQDIFF_NORMED - 平方差归一化，范围0~1，越小越像
+                    # TM_CCORR - 相关匹配(把目标区域和模板对应点像素值相乘),越大越像 会收到亮度影响 本质是相似两个数的乘积就会越大，相同就是最大的平方
+                    # TM_CCORR_NORMED - 相关归一化，越大越像
+                    # TM_CCOEFF - 相关系数匹配(在各自核内(目标图像的平均值取整个图像的平均值)的标准差相乘，后将每一点的乘积相加)，越大越像
+                    # TM_CCOEFF_NORMED - 相关系数归一化，越大越像
+                )
+                maxpct = np.max(pct)
+                # print(f"{aim}匹配度:{pct}\n最大匹配度:{maxpct}")
+                print(f"{aim}最大匹配度:{maxpct}")
+                if maxpct > self.jingdu:
+                    aimpct = np.where(pct == maxpct)  # 获得符合的索引 等价于坐标
+                    x = aimpct[1][0]
+                    y = aimpct[0][0]
+                    zuobiao = (x, y)
+                    print(f"相对坐标:{zuobiao}")
+                    abx = x + self.savedata["jtnamearea"][0]
+                    aby = y + self.savedata["jtnamearea"][1]
+                    abzuobiao = (abx, aby)
+                    print(f"绝对坐标:{abzuobiao}")
+                    # =====观测=====
+                    # print(f"aimpct:{aimpct}")
+                    # mbwidth = np.shape(nowmuban)[1]
+                    # mbheigh = np.shape(nowmuban)[0]
+                    # print(f"区块[宽:{mbwidth}  高:{mbheigh}]")
+                    # funpbgr = npjtbgr.copy()  # 深拷贝创建副本
+                    #
+                    # okjt = cv2.rectangle(
+                    #     npjtbgr,
+                    #     zuobiao,
+                    #     (x + mbwidth, y + mbheigh),
+                    #     (0, 0, 255),
+                    #     2
+                    # )
+                    #
+                    # cv2.imshow("jt", okjt)
+                    # cv2.waitKey(0)
+                    # npjtbgr = funpbgr  # 展示完后还原
+                    # gui.click(abzuobiao)
+                    # =====观测=====
+                    if aby < self.szline:
+                        # print("上")
+                        barea = self.savedata["jtbarea1"]
+                        biaojt = self.getshot(barea)
+                        biaobgr = np.array(biaojt)
+                        biaorgb = cv2.cvtColor(biaobgr, cv2.COLOR_BGR2RGB)
+                        gui.moveTo(self.savedata["mousemove1"])  # 先移动少一次判断
+
+                    elif self.szline < aby < self.zxline:
+                        # print("中")
+                        barea = self.savedata["jtbarea2"]
+                        biaojt = self.getshot(barea)
+                        biaobgr = np.array(biaojt)
+                        biaorgb = cv2.cvtColor(biaobgr, cv2.COLOR_BGR2RGB)
+                        gui.moveTo(self.savedata["mousemove2"])
+
+                    elif aby > self.zxline:
+                        # print("下")
+                        barea = self.savedata["jtbarea3"]
+                        biaojt = self.getshot(barea)
+                        biaobgr = np.array(biaojt)
+                        biaorgb = cv2.cvtColor(biaobgr, cv2.COLOR_BGR2RGB)
+                        gui.moveTo(self.savedata["mousemove3"])
+
+                    # cv2.imshow("biao", biaorgb)
+                    # cv2.waitKey(0)
+                    bpct = cv2.matchTemplate(  # 计算模板在截图中各个位置的匹配度
+                        biaorgb,  # 目标
+                        ssrgbnp,  # 模板
+                        cv2.TM_CCOEFF_NORMED
+                    )
+                    maxbpct = np.max(bpct)
+                    print(f"SS最大匹配度:{maxbpct}")
+
+                    if maxbpct > 0.92:
+                        print(f"匹配到目标<{aim}>,执行攻击")
+                        if self.mod.get() == 2:
+                            tk.messagebox.showinfo("调试模式-结果", f"找到目标<{aim}>,执行攻击")
+                        elif self.mod.get() == 1:
+                            gui.click()
+                            gui.click()
+                            time.sleep(0.5)
+                            gui.click(self.savedata["surebtn"])
+                            time.sleep(0.25)
+                            gui.click(self.savedata["surebtn"])
+
+                        if self.auto.get() == 1:
+                            k = 0
+                            time.sleep(0.5)
+                            print("自动开启")
+                            while self.stop != 1 and k < 50:
+                                atuobtnjt = self.getshot(self.savedata["jtatuobtnarea"])
+                                atuobgr = np.array(atuobtnjt)
+                                atuorgb = cv2.cvtColor(atuobgr,cv2.COLOR_BGR2RGB)#按钮区域
+                                atuopct = cv2.matchTemplate(
+                                    atuorgb,
+                                    atuobtnnp,
+                                    cv2.TM_CCOEFF_NORMED
+                                )
+                                maxatuopct = np.max(atuopct)
+                                if maxatuopct > 0.8:
+                                    time.sleep(0.1)
+                                    gui.click(self.savedata["atuoclick"])
+                                    self.stop = 1
+                                k = k+1
+                                time.sleep(0.5)
+
+                        self.stop = 1
+                        self.btn1["text"] = "开始运行"
+                        self.btn1["state"] = tk.NORMAL
+                        return 0  # 结束整个方法执行
+                    else:
+                        print(f"匹配到目标<{aim}>,铜币不满足要求，继续运行")
+                # else:
+                #     print(f"没有找到{aim}")
+            time.sleep(0.25)
+            gui.click(self.savedata["repeatbtn"])
+            time.sleep(0.5)
+            n = n+1
+
+    def getlwindow(self,i=4):
+        # print("获取活跃窗口")
+        if i > 0:
+            self.btn1["state"] = tk.DISABLED  # 捕获时禁用
+            self.btn2["state"] = tk.DISABLED#捕获时禁用
+            self.btn2["text"] = f"{i}秒"
+            self.after(1000, self.getlwindow, i - 1)
+        else:
+            self.lifewindow = gw.getActiveWindow()
+            if self.lifewindow.title == "火影忍者online":
+                # self.yuanshang = self.lifewindow.top
+                # self.yuanzuo = self.lifewindow.left
+                # self.yuankuan = self.lifewindow.width
+                # self.yuangao = self.lifewindow.height
+                # print(f"上边距:{self.yuanshang} 左边距:{self.yuanzuo} 宽:{self.yuankuan} 高:{self.yuangao}")
+                self.txtbox1.delete("1.0",tk.END)
+                self.txtbox1.insert("1.0",self.lifewindow.title)
+                self.btn1["state"] = tk.NORMAL  # 捕获时禁用
+                self.btn2["state"] = tk.NORMAL
+                self.btn2["text"] = f"获取窗口"
+                #规范化窗口
+                self.lifewindow.top = 38
+                self.lifewindow.left = 160
+                self.lifewindow.width = 2804
+                self.lifewindow.height = 1740
+                print("窗口规范化")
+            else:
+                self.lifewindow = None
+                self.txtbox1.delete("1.0", tk.END)
+                self.txtbox1.insert("1.0", "无效窗口")
+                self.btn1["state"] = tk.NORMAL  # 捕获时禁用
+                self.btn2["state"] = tk.NORMAL
+                self.btn2["text"] = f"获取窗口"
+
+    def inputpic(self):
+        print("导入目标图片")
+        global ssrgbnp
+        global atuobtnnp
+        global atkaimlist
+        ty = 1
+        if self.aimmuban:
+            ans = tk.messagebox.askyesno("注意","是否要重新导入图片(请确保路径和文件名为纯英文)")
+            if ans == False:
+                ty = 0
+                print("取消导入")
+            else:
+                self.aimmuban = {}
+                self.youxianjibiao = {}
+                atkaimlist = [] #在函数内就是局部变量
+        if ty == 1:
+            filenum = len(os.listdir(kufile))  # 放进变量速度提升，但比算两次会多占用内存
+            print(f"文件数量:{filenum}")
+            if filenum == 0:
+                print(f"图片库文件<{kufile}>为空,请进行添加")
+            else:
+                SSpath = kufile + "\\" + "SS.png"
+                atuobtnpath = kufile + "\\" + "atuobtn.png"
+                if os.path.exists(SSpath):
+                    ssrgbnp = cv2.imread(SSpath)
+                    # cv2.imshow("ss",ssrgbnp)
+                    # cv2.waitKey(0)
+                    for image in os.listdir(kufile):
+                        # print(type(image))
+                        if image.endswith((".png", ".jpg", ".jpeg", ".bwp")) and (image not in ["SS.png","atuobtn.png"]):  # cv2支持的图片格式 合集只能用元组
+                            atkaimlist.append(image)
+                    print(f"目标名称:{atkaimlist}")
+                else:
+                    print(f"***请先在图片库路径<{kufile}>预设一张点卷SS的图片，并命名为\"SS.png\"***")
+                    sserr = 1
+
+                if os.path.exists(atuobtnpath):
+                    atuobtnnp = cv2.imread(atuobtnpath)
+                else:
+                    print(f"没有找到自动按钮")
+
+            for pic in atkaimlist:
+                filepath = kufile + "\\" + pic
+                muban = cv2.imread(filepath)
+                muban = cv2.cvtColor(muban,cv2.COLOR_BGR2GRAY)
+                if pic.endswith((".png", ".jpg",".bwp")):
+                    pic = pic[:-4]
+                else:
+                    pic = pic[:-5]
+                self.aimmuban[pic] = muban
+                self.youxianjibiao[pic] = 1
+            print(f"名字和np数组字典:\n{self.aimmuban}")
+            print(f"优先级:{self.youxianjibiao}")
+            print(f"完成,当前队列长度:{len(self.aimmuban)}")#[[[点像素值]单个图像]组]
+        # n = 0
+        # for i in self.aimmuban:
+        #     n = n+1
+        #     shape = np.shape(i)
+        #     print(f"第{n}模板形状:{shape}")
+
+    def updatepicku(self):
+        print("更新图库")
+        os.startfile(kufile)#打开库路径的文件管理器
+
+    def atuopass(self,*args):
+        global atuobtnnp
+        if self.auto.get() == 1:
+            if atuobtnnp is None:
+                tk.messagebox.showerror("错误","没有导入图库或图库中没有自动按钮图片:{atuobtn.png}")
+                self.auto.set(0)
+
+    def queuespeed(self):
+        print("优先级调整")
+        if not self.youxianjibiao:
+            if sserr == 1:
+                messagebox.showerror("注意", f"请先在图片库路径<{kufile}>预设一张点卷SS的图片，并命名为\"SS.png\"")
+            else:
+                messagebox.showerror("错误","请先完成\"导入目标\"")
+        else:
+            self.sonwindow1 = tk.Toplevel(self)
+            self.sonwindow1.title("目标优先级列表")
+            self.sonwindow1.geometry("700x1200")
+
+            self.sontreev1 = ttk.Treeview(
+                self.sonwindow1,
+                columns=("xh","name","yxj"),#每一列的名字****区分于标题****
+                show="headings"#显示列标题开
+            )
+            #设置每一列的标题
+            self.sontreev1.heading("xh", text="序号")
+            self.sontreev1.heading("name", text="名字")
+            self.sontreev1.heading("yxj", text="优先级")
+            #调试每一列的属性
+            self.sontreev1.column("xh", anchor="e",width=50)
+            self.sontreev1.column("name", anchor="center",width=160)
+            self.sontreev1.column("yxj", anchor="center", width=90)
+
+            self.sontreev1.bind("<Double-1>",self.bshuangji)#<Double-1>-Double双击，-1鼠标左键，-2鼠标中键，-3鼠标右键
+            #设置行的字体样式(tags标签)
+            self.sontreev1.tag_configure("fixed_height", font=("Arial", 8))  # 设置字体大小
+            self.sontreev1.tag_bind("fixed_height", "<Motion>", lambda e: "break")  # 防止鼠标事件影响行高
+
+            self.sontreev1.pack(expand=True,fill="both",padx=20,pady=120)#expand-扩大(True为打开) fill-填充样式 padxy-填充裕量
+
+            self.sbtn1 = tk.Button(self.sonwindow1,text="应用",width=20,fg="red",bg="#FFFFFF",command=self.yxjused)
+            self.sbtn1.config(relief="raised",borderwidth=5)
+            self.sbtn1.pack()
+            self.sbtn1.place(x=200,y=1100)
+
+            # namedata = []
+            # yxjdata = []
+            for i in range(0,len(self.youxianjibiao)):
+                # print(data[i])
+                name = list(self.youxianjibiao.keys())[i]
+                # print(name)
+                # namedata.append(name)
+                yxj = list(self.youxianjibiao.values())[i]
+                # yxjdata.append(yxj)
+                data = (i+1,name,yxj)
+                self.sontreev1.insert("","end",values=data,tags=("fixed_height",))
+
+    def yxjused(self):
+        self.youxianjibiao = {}
+        for item in self.sontreev1.get_children():#获取的是索引
+            data = self.sontreev1.item(item,"value")
+            name = data[1]
+            yxj = data[2]
+            # print(f"{name}-{yxj}")
+            self.youxianjibiao[name] = yxj
+        # print(self.youxianjibiao.items())
+        self.youxianjibiao = dict(sorted(self.youxianjibiao.items(),key=lambda item: item[1],reverse=True))
+        #sorted-以key(形参，不是字典的key)作为判断依据
+        #revers-降序排序
+        #lambda item-形参:item-函数体
+        #***这里得出的键值对(素材)先传递给sorted 再从Sorted传递到lambda***
+        # print(self.youxianjibiao)
+        self.aimmuban = {name: self.aimmuban[name] for name in self.youxianjibiao.keys()}
+        print(f"调整后优先级:\n{self.youxianjibiao}")
+        # print(f"调整后字典:\n{self.aimmuban}")
+        self.sonwindow1.destroy()
+
+    def bshuangji(self,event):
+        # print("双击")
+        xuanzhong = self.sontreev1.selection()[0]#获取选中的行(总的一条)
+        data = self.sontreev1.item(xuanzhong,"values")
+        xuhao = data[0]
+        namedata = data[1]
+        yxjdata = data[2]
+        print(f"选中:<{namedata}>-选中优先级:{yxjdata}")
+        sonwindow2 = tk.Toplevel(self)
+        sonwindow2.geometry("600x260")
+
+        sbiaoti2 = tk.Label(sonwindow2,text="输入修改值:")
+        sbiaoti2.pack()
+        sbiaoti2.place(x=80,y=20)
+
+        stxtbox2 = tk.Text(sonwindow2,width=30,height=2)
+        stxtbox2.pack()
+        stxtbox2.place(x=80,y=80)
+
+        def makesure2():
+            sinput2 = stxtbox2.get("1.0",tk.END)
+            try:
+                sinput2 = int(sinput2)
+                self.sontreev1.item(xuanzhong, values=(xuhao, namedata, sinput2))
+                for item in self.sontreev1.get_children():
+                    datas = self.sontreev1.item(item,"values")
+                    print(datas)
+                sonwindow2.destroy()
+            except Exception as err:
+                print(err)
+                messagebox.showerror("错误", "请输入正确数字形式")
+
+        sbtn2 = tk.Button(sonwindow2,text="确认",width=18,bg="#FFFFFF",fg="red",command=makesure2)
+        sbtn2.config(relief="raised",borderwidth=7)
+        sbtn2.pack()
+        sbtn2.place(x=155,y=180)
+
+    def areashow(self,area):
+        testjtbgr = np.array(self.getshot(area))
+        testjtrgb = cv2.cvtColor(testjtbgr,cv2.COLOR_BGR2RGB)
+        cv2.imshow("areatest",testjtrgb)
+        cv2.waitKey(0)
+
+    def moveshow(self,postion):
+        time.sleep(1)
+        gui.moveTo(postion)
+
+    def modchoose(self):
+        self.sonwindow2 = tk.Toplevel(self)#toplevel是辅助窗口(也可以独立存在)，可以绑定tk，而一般一个进程只有一个一个TK主窗口
+        #用tk.TK就是让圆形选框根据TK的属性执行和写入 体现就是没有效果
+        self.sonwindow2.geometry("630x1250")
+        self.sonwindow2.title("全局设置")
+
+        modoptions = ["正常模式(默认)", "调试模式"]
+        # 圆形选框
+        for i in range(0, len(modoptions)):
+            sonw2xuankuang = tk.Radiobutton(self.sonwindow2, text=modoptions[i], variable=self.mod, value=i + 1)
+            sonw2xuankuang.pack()
+            sonw2xuankuang.place(x=165, y=25 + i * 50)
+
+        self.fgline21 = tk.Frame(self.sonwindow2, height=2, bg="#999999", relief="ridge")
+        self.fgline21.pack(fill="x", pady=135)  # pady 用于增加分割线上下的间距
+
+        self.biaoti20 = tk.Label(self.sonwindow2,text="当前精度:")
+        self.biaoti20.pack()
+        self.biaoti20.place(x=70,y=165)
+
+        self.txtbox20 = tk.Text(self.sonwindow2,width=20,height=2)
+        self.txtbox20.pack()
+        self.txtbox20.place(x=180,y=155)
+        self.txtbox20.insert("1.0",str(self.jingdu))
+
+        self.sbtn20 = tk.Button(self.sonwindow2, text="保存设置", width=10, fg="red", bg="#FFFFFF", command=self.setused)
+        self.sbtn20.config(relief="raised", borderwidth=5)
+        self.sbtn20.pack()
+        self.sbtn20.place(x=110, y=1125)
+
+        self.resetbtn = tk.Button(self.sonwindow2, text="重置为默认值", width=10, fg="#000000", bg="#FFFFFF", command=self.reset)
+        self.resetbtn.config(relief="raised", borderwidth=5)
+        self.resetbtn.pack()
+        self.resetbtn.place(x=350, y=1125)
+
+        self.biaoti21 = tk.Label(self.sonwindow2, text="名字截图范围:")
+        self.biaoti21.pack()
+        self.biaoti21.place(x=25, y=240)
+
+        self.txtbox21 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox21.pack()
+        self.txtbox21.place(x=180, y=230)
+        self.txtbox21.insert("1.0",str(self.savedata["jtnamearea"]))
+
+        self.showbtn21 = tk.Button(self.sonwindow2,text="测试", bg="#FFFFFF",width=6, height=1,
+                                   command=lambda: self.areashow(ast.literal_eval(self.txtbox21.get("1.0",tk.END))))
+        self.showbtn21.pack()
+        self.showbtn21.place(x=480, y=230)
+
+        self.biaoti22 = tk.Label(self.sonwindow2, text="镖型检测范围\n(上):")
+        self.biaoti22.pack()
+        self.biaoti22.place(x=25, y=305)
+
+        self.txtbox22 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox22.pack()
+        self.txtbox22.place(x=180, y=310)
+        self.txtbox22.insert("1.0", str(self.savedata["jtbarea1"]))
+
+        self.showbtn22 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.areashow(ast.literal_eval(self.txtbox22.get("1.0", tk.END))))#传入参数调用需要lambda
+        self.showbtn22.pack()
+        self.showbtn22.place(x=480, y=310)
+
+        self.biaoti23 = tk.Label(self.sonwindow2, text="镖型检测范围\n(中):")
+        self.biaoti23.pack()
+        self.biaoti23.place(x=25, y=385)
+
+        self.txtbox23 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox23.pack()
+        self.txtbox23.place(x=180, y=390)
+        self.txtbox23.insert("1.0", str(self.savedata["jtbarea2"]))
+
+        self.showbtn23 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.areashow(ast.literal_eval(self.txtbox23.get("1.0", tk.END))))
+        self.showbtn23.pack()
+        self.showbtn23.place(x=480, y=390)
+
+        self.biaoti24 = tk.Label(self.sonwindow2, text="镖型检测范围\n(下):")
+        self.biaoti24.pack()
+        self.biaoti24.place(x=25, y=465)
+
+        self.txtbox24 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox24.pack()
+        self.txtbox24.place(x=180, y=470)
+        self.txtbox24.insert("1.0", str(self.savedata["jtbarea3"]))
+
+        self.showbtn24 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.areashow(ast.literal_eval(self.txtbox24.get("1.0", tk.END))))
+        self.showbtn24.pack()
+        self.showbtn24.place(x=480, y=470)
+
+        self.biaoti25 = tk.Label(self.sonwindow2, text="攻击按钮(上):")
+        self.biaoti25.pack()
+        self.biaoti25.place(x=32, y=560)
+
+        self.txtbox25 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox25.pack()
+        self.txtbox25.place(x=180, y=550)
+        self.txtbox25.insert("1.0", str(self.savedata["mousemove1"]))
+
+        self.showbtn25 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.moveshow(ast.literal_eval(self.txtbox25.get("1.0", tk.END))))
+        self.showbtn25.pack()
+        self.showbtn25.place(x=480, y=552)
+
+        self.biaoti26 = tk.Label(self.sonwindow2, text="攻击按钮(中):")
+        self.biaoti26.pack()
+        self.biaoti26.place(x=32, y=640)
+
+        self.txtbox26 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox26.pack()
+        self.txtbox26.place(x=180, y=630)
+        self.txtbox26.insert("1.0", str(self.savedata["mousemove2"]))
+
+        self.showbtn26 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.moveshow(ast.literal_eval(self.txtbox26.get("1.0", tk.END))))
+        self.showbtn26.pack()
+        self.showbtn26.place(x=480, y=635)
+
+        self.biaoti27 = tk.Label(self.sonwindow2, text="攻击按钮(下):")
+        self.biaoti27.pack()
+        self.biaoti27.place(x=32, y=715)
+
+        self.txtbox27 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox27.pack()
+        self.txtbox27.place(x=180, y=710)
+        self.txtbox27.insert("1.0", str(self.savedata["mousemove3"]))
+
+        self.showbtn27 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.moveshow(ast.literal_eval(self.txtbox27.get("1.0", tk.END))))
+        self.showbtn27.pack()
+        self.showbtn27.place(x=480, y=715)
+
+        self.biaoti28 = tk.Label(self.sonwindow2, text="刷新按钮:")
+        self.biaoti28.pack()
+        self.biaoti28.place(x=70, y=795)
+
+        self.txtbox28 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox28.pack()
+        self.txtbox28.place(x=180, y=790)
+        self.txtbox28.insert("1.0", str(self.savedata["repeatbtn"]))
+
+        self.showbtn28 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.moveshow(ast.literal_eval(self.txtbox28.get("1.0", tk.END))))
+        self.showbtn28.pack()
+        self.showbtn28.place(x=480, y=795)
+
+        self.biaoti29 = tk.Label(self.sonwindow2, text="确认按钮:")
+        self.biaoti29.pack()
+        self.biaoti29.place(x=70, y=875)
+
+        self.txtbox29 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox29.pack()
+        self.txtbox29.place(x=180, y=870)
+        self.txtbox29.insert("1.0", str(self.savedata["surebtn"]))
+
+        self.showbtn29 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.moveshow(ast.literal_eval(self.txtbox29.get("1.0", tk.END))))
+        self.showbtn29.pack()
+        self.showbtn29.place(x=480, y=875)
+
+        self.biaoti210 = tk.Label(self.sonwindow2, text="自动按钮区域:")
+        self.biaoti210.pack()
+        self.biaoti210.place(x=20, y=955)
+
+        self.txtbox210 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox210.pack()
+        self.txtbox210.place(x=180, y=950)
+        self.txtbox210.insert("1.0", str(self.savedata["jtatuobtnarea"]))
+
+        self.showbtn210 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                   command=lambda: self.areashow(ast.literal_eval(self.txtbox210.get("1.0", tk.END))))
+        self.showbtn210.pack()
+        self.showbtn210.place(x=480, y=955)
+
+        self.biaoti211 = tk.Label(self.sonwindow2, text="自动按钮点击:")
+        self.biaoti211.pack()
+        self.biaoti211.place(x=20, y=1035)
+
+        self.txtbox211 = tk.Text(self.sonwindow2, width=20, height=2)
+        self.txtbox211.pack()
+        self.txtbox211.place(x=180, y=1030)
+        self.txtbox211.insert("1.0", str(self.savedata["atuoclick"]))
+
+        self.showbtn211 = tk.Button(self.sonwindow2, text="测试", bg="#FFFFFF", width=6, height=1,
+                                    command=lambda: self.moveshow(ast.literal_eval(self.txtbox210.get("1.0", tk.END))))
+        self.showbtn211.pack()
+        self.showbtn211.place(x=480, y=1035)
+
+    def reset(self):
+        ans = tk.messagebox.askyesno("注意","确定要将所有位置值重置为默认值吗？")
+        if ans == True:
+            print("重置")
+            with open(configpath,"w") as savefile:
+                json.dump(morenmemoryset,savefile)
+
+            self.txtbox21.delete("1.0",tk.END)
+            self.txtbox21.insert("1.0",str(self.savedata["jtnamearea"]))
+
+            self.txtbox22.delete("1.0", tk.END)
+            self.txtbox22.insert("1.0", str(self.savedata["jtbarea1"]))
+
+            self.txtbox23.delete("1.0", tk.END)
+            self.txtbox23.insert("1.0", str(self.savedata["jtbarea2"]))
+
+            self.txtbox24.delete("1.0", tk.END)
+            self.txtbox24.insert("1.0", str(self.savedata["jtbarea3"]))
+
+            self.txtbox25.delete("1.0", tk.END)
+            self.txtbox25.insert("1.0", str(self.savedata["mousemove1"]))
+
+            self.txtbox26.delete("1.0", tk.END)
+            self.txtbox26.insert("1.0", str(self.savedata["mousemove2"]))
+
+            self.txtbox27.delete("1.0", tk.END)
+            self.txtbox27.insert("1.0", str(self.savedata["mousemove3"]))
+
+            self.txtbox28.delete("1.0", tk.END)
+            self.txtbox28.insert("1.0", str(self.savedata["repeatbtn"]))
+
+            self.txtbox29.delete("1.0", tk.END)
+            self.txtbox29.insert("1.0", str(self.savedata["surebtn"]))
+
+            self.txtbox210.delete("1.0", tk.END)
+            self.txtbox210.insert("1.0", str(self.savedata["jtatuobtnarea"]))
+
+            self.txtbox211.delete("1.0", tk.END)
+            self.txtbox211.insert("1.0", str(self.savedata["atuoclick"]))
+
+    def setused(self):
+        # print("精度修改使用")
+        with open(configpath, "w") as savefile:
+            if self.txtbox21.get("1.0",tk.END) != "":
+                val1 = ast.literal_eval(self.txtbox21.get("1.0",tk.END))
+                # print(val1)
+                self.savedata["jtnamearea"] = val1
+                print("截图名字区域保存成功")
+
+            if self.txtbox22.get("1.0",tk.END) != "":
+                val2 = ast.literal_eval(self.txtbox22.get("1.0",tk.END))
+                # print(val2)
+                self.savedata["jtbarea1"] = val2
+                print("镖型区域(上)保存成功")
+
+            if self.txtbox23.get("1.0",tk.END) != "":
+                val3 = ast.literal_eval(self.txtbox23.get("1.0",tk.END))
+                # print(val3)
+                self.savedata["jtbarea2"] = val3
+                print("镖型区域(中)保存成功")
+
+            if self.txtbox24.get("1.0",tk.END) != "":
+                val4 = ast.literal_eval(self.txtbox24.get("1.0",tk.END))
+                # print(val4)
+                self.savedata["jtbarea3"] = val4
+                print("镖型区域(下)保存成功")
+
+            if self.txtbox25.get("1.0",tk.END) != "":
+                val5 = ast.literal_eval(self.txtbox25.get("1.0",tk.END))
+                # print(val5)
+                self.savedata["mousemove1"] = val5
+                print("攻击按钮(上)保存成功")
+
+            if self.txtbox26.get("1.0",tk.END) != "":
+                val6 = ast.literal_eval(self.txtbox26.get("1.0",tk.END))
+                # print(val6)
+                self.savedata["mousemove2"] = val6
+                print("攻击按钮(中)保存成功")
+
+            if self.txtbox27.get("1.0",tk.END) != "":
+                val7 = ast.literal_eval(self.txtbox27.get("1.0",tk.END))
+                # print(val6)
+                self.savedata["mousemove3"] = val7
+                print("攻击按钮(下)保存成功")
+
+            if self.txtbox28.get("1.0",tk.END) != "":
+                val8 = ast.literal_eval(self.txtbox28.get("1.0",tk.END))
+                # print(val6)
+                self.savedata["repeatbtn"] = val8
+                print("刷新按钮保存成功")
+
+            if self.txtbox29.get("1.0",tk.END) != "":
+                val9 = ast.literal_eval(self.txtbox29.get("1.0",tk.END))
+                # print(val6)
+                self.savedata["surebtn"] = val9
+                print("确认按钮保存成功")
+
+            if self.txtbox210.get("1.0",tk.END) != "":
+                val10 = ast.literal_eval(self.txtbox210.get("1.0",tk.END))
+                # print(val6)
+                self.savedata["jtatuobtnarea"] = val10
+                print("自动按钮保存成功")
+
+            if self.txtbox211.get("1.0",tk.END) != "":
+                val11 = ast.literal_eval(self.txtbox211.get("1.0",tk.END))
+                # print(val6)
+                self.savedata["atuoclick"] = val11
+                print("自动按钮点击位置保存成功")
+
+            self.szline = self.savedata["jtbarea2"][1] - 35
+            self.zxline = self.savedata["jtbarea3"][1] + 35
+
+            json.dump(self.savedata, savefile)
+            savefile.close()
+
+        try:
+            rejd = float(self.txtbox20.get("1.0", tk.END))
+            # print(rejd)
+            if 0 <= rejd <= 1:
+                self.jingdu = rejd
+                print("精度修改成功")
+                self.sonwindow2.destroy()
+            else:
+                tk.messagebox.showerror("输入错误","输入仅限0-1的数字")
+        except ValueError as valerr:
+            tk.messagebox.showerror("输入错误",f"输入仅限0-1的数字:{valerr}")
+
+    def modcs(self,*args):
+        print(self.mod.get())
+        self.biaoti2.config(text=f"当前模式:{self.modoptions[self.mod.get()-1]}")
+
+App = Appwindow()#创建窗口
+App.protocol("WM_DELETE_WINDOW", Appclose)  # 绑定关闭窗口事件
+App.mainloop()#保证窗口的持续

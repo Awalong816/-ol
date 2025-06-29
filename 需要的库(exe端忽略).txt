@@ -1,0 +1,6 @@
+运行环境终端安装:
+pip install opencv-python
+pip install numpy
+pip install pygetwindow
+pip install pyautogui
+pip install keyboard

@@ -803,41 +803,39 @@ class Appwindow(tk.Tk):
         ans = tk.messagebox.askyesno("注意","确定要将所有位置值重置为默认值吗？")
         if ans == True:
             print("重置")
-            with open(configpath,"w") as savefile:
-                json.dump(morenmemoryset,savefile)
 
             self.txtbox21.delete("1.0",tk.END)
-            self.txtbox21.insert("1.0",str(self.savedata["jtnamearea"]))
+            self.txtbox21.insert("1.0",str(morenmemoryset["jtnamearea"]))
 
             self.txtbox22.delete("1.0", tk.END)
-            self.txtbox22.insert("1.0", str(self.savedata["jtbarea1"]))
+            self.txtbox22.insert("1.0", str(morenmemoryset["jtbarea1"]))
 
             self.txtbox23.delete("1.0", tk.END)
-            self.txtbox23.insert("1.0", str(self.savedata["jtbarea2"]))
+            self.txtbox23.insert("1.0", str(morenmemoryset["jtbarea2"]))
 
             self.txtbox24.delete("1.0", tk.END)
-            self.txtbox24.insert("1.0", str(self.savedata["jtbarea3"]))
+            self.txtbox24.insert("1.0", str(morenmemoryset["jtbarea3"]))
 
             self.txtbox25.delete("1.0", tk.END)
-            self.txtbox25.insert("1.0", str(self.savedata["mousemove1"]))
+            self.txtbox25.insert("1.0", str(morenmemoryset["mousemove1"]))
 
             self.txtbox26.delete("1.0", tk.END)
-            self.txtbox26.insert("1.0", str(self.savedata["mousemove2"]))
+            self.txtbox26.insert("1.0", str(morenmemoryset["mousemove2"]))
 
             self.txtbox27.delete("1.0", tk.END)
-            self.txtbox27.insert("1.0", str(self.savedata["mousemove3"]))
+            self.txtbox27.insert("1.0", str(morenmemoryset["mousemove3"]))
 
             self.txtbox28.delete("1.0", tk.END)
-            self.txtbox28.insert("1.0", str(self.savedata["repeatbtn"]))
+            self.txtbox28.insert("1.0", str(morenmemoryset["repeatbtn"]))
 
             self.txtbox29.delete("1.0", tk.END)
-            self.txtbox29.insert("1.0", str(self.savedata["surebtn"]))
+            self.txtbox29.insert("1.0", str(morenmemoryset["surebtn"]))
 
             self.txtbox210.delete("1.0", tk.END)
-            self.txtbox210.insert("1.0", str(self.savedata["jtatuobtnarea"]))
+            self.txtbox210.insert("1.0", str(morenmemoryset["jtatuobtnarea"]))
 
             self.txtbox211.delete("1.0", tk.END)
-            self.txtbox211.insert("1.0", str(self.savedata["atuoclick"]))
+            self.txtbox211.insert("1.0", str(morenmemoryset["atuoclick"]))
 
     def setused(self):
         # print("精度修改使用")

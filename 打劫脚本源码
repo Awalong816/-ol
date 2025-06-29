@@ -803,41 +803,39 @@ class Appwindow(tk.Tk):
         ans = tk.messagebox.askyesno("注意","确定要将所有位置值重置为默认值吗？")
         if ans == True:
             print("重置")
-            with open(configpath,"w") as savefile:
-                json.dump(morenmemoryset,savefile)
 
             self.txtbox21.delete("1.0",tk.END)
-            self.txtbox21.insert("1.0",str(self.savedata["jtnamearea"]))
+            self.txtbox21.insert("1.0",str(morenmemoryset["jtnamearea"]))
 
             self.txtbox22.delete("1.0", tk.END)
-            self.txtbox22.insert("1.0", str(self.savedata["jtbarea1"]))
+            self.txtbox22.insert("1.0", str(morenmemoryset["jtbarea1"]))
 
             self.txtbox23.delete("1.0", tk.END)
-            self.txtbox23.insert("1.0", str(self.savedata["jtbarea2"]))
+            self.txtbox23.insert("1.0", str(morenmemoryset["jtbarea2"]))
 
             self.txtbox24.delete("1.0", tk.END)
-            self.txtbox24.insert("1.0", str(self.savedata["jtbarea3"]))
+            self.txtbox24.insert("1.0", str(morenmemoryset["jtbarea3"]))
 
             self.txtbox25.delete("1.0", tk.END)
-            self.txtbox25.insert("1.0", str(self.savedata["mousemove1"]))
+            self.txtbox25.insert("1.0", str(morenmemoryset["mousemove1"]))
 
             self.txtbox26.delete("1.0", tk.END)
-            self.txtbox26.insert("1.0", str(self.savedata["mousemove2"]))
+            self.txtbox26.insert("1.0", str(morenmemoryset["mousemove2"]))
 
             self.txtbox27.delete("1.0", tk.END)
-            self.txtbox27.insert("1.0", str(self.savedata["mousemove3"]))
+            self.txtbox27.insert("1.0", str(morenmemoryset["mousemove3"]))
 
             self.txtbox28.delete("1.0", tk.END)
-            self.txtbox28.insert("1.0", str(self.savedata["repeatbtn"]))
+            self.txtbox28.insert("1.0", str(morenmemoryset["repeatbtn"]))
 
             self.txtbox29.delete("1.0", tk.END)
-            self.txtbox29.insert("1.0", str(self.savedata["surebtn"]))
+            self.txtbox29.insert("1.0", str(morenmemoryset["surebtn"]))
 
             self.txtbox210.delete("1.0", tk.END)
-            self.txtbox210.insert("1.0", str(self.savedata["jtatuobtnarea"]))
+            self.txtbox210.insert("1.0", str(morenmemoryset["jtatuobtnarea"]))
 
             self.txtbox211.delete("1.0", tk.END)
-            self.txtbox211.insert("1.0", str(self.savedata["atuoclick"]))
+            self.txtbox211.insert("1.0", str(morenmemoryset["atuoclick"]))
 
     def setused(self):
         # print("精度修改使用")
@@ -884,27 +882,27 @@ class Appwindow(tk.Tk):
                 self.savedata["mousemove3"] = val7
                 print("攻击按钮(下)保存成功")
 
-            if self.txtbox28.get("1.0",tk.END) != "":
+            if self.txtbox28.get("1.0", tk.END) != "":
                 val8 = ast.literal_eval(self.txtbox28.get("1.0",tk.END))
-                # print(val6)
+                # 打印(val6)
                 self.savedata["repeatbtn"] = val8
                 print("刷新按钮保存成功")
 
-            if self.txtbox29.get("1.0",tk.END) != "":
+            if self.txtbox29.get("1.0", tk.END) != "":
                 val9 = ast.literal_eval(self.txtbox29.get("1.0",tk.END))
-                # print(val6)
+                # 打印(val6)
                 self.savedata["surebtn"] = val9
                 print("确认按钮保存成功")
 
-            if self.txtbox210.get("1.0",tk.END) != "":
-                val10 = ast.literal_eval(self.txtbox210.get("1.0",tk.END))
-                # print(val6)
+            if self.txtbox210.get("1.0", tk.END) != "":
+                val10 = ast.literal_eval(self.txtbox210.get("1.0", tk.END))
+                # 打印(val6)
                 self.savedata["jtatuobtnarea"] = val10
                 print("自动按钮保存成功")
 
-            if self.txtbox211.get("1.0",tk.END) != "":
-                val11 = ast.literal_eval(self.txtbox211.get("1.0",tk.END))
-                # print(val6)
+            if self.txtbox211.get("1.0", tk.END) != "":
+                val11 = ast.literal_eval(self.txtbox211.get("1.0", tk.END))
+                # 打印(val6)
                 self.savedata["atuoclick"] = val11
                 print("自动按钮点击位置保存成功")
 
@@ -914,14 +912,14 @@ class Appwindow(tk.Tk):
             json.dump(self.savedata, savefile)
             savefile.close()
 
-        try:
+        尝试:
             rejd = float(self.txtbox20.get("1.0", tk.END))
-            # print(rejd)
+            # 打印(rejd)
             if 0 <= rejd <= 1:
                 self.jingdu = rejd
                 print("精度修改成功")
-                self.sonwindow2.destroy()
-            else:
+                self sonwindow2.destroy()
+            否则:
                 tk.messagebox.showerror("输入错误","输入仅限0-1的数字")
         except ValueError as valerr:
             tk.messagebox.showerror("输入错误",f"输入仅限0-1的数字:{valerr}")
@@ -930,6 +928,6 @@ class Appwindow(tk.Tk):
         print(self.mod.get())
         self.biaoti2.config(text=f"当前模式:{self.modoptions[self.mod.get()-1]}")
 
-App = Appwindow()#创建窗口
+App = Appwindow() # 创建窗口
 App.protocol("WM_DELETE_WINDOW", Appclose)  # 绑定关闭窗口事件
 App.mainloop()#保证窗口的持续

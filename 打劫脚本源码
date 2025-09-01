@@ -107,7 +107,7 @@ class Appwindow(tk.Tk):
         self.resizable(False, False)
 
         self.title("终极兹克索尔")
-        self.version = "v-25.6.28\n仅供学习交流使用"
+        self.version = "v-25.9.1\n仅供学习交流使用"
         self.lifewindow = "未知"
         self.jingdu = 0.92
         self.stop = 0
@@ -251,7 +251,7 @@ class Appwindow(tk.Tk):
                 self.btn1["state"] = tk.NORMAL
                 return 0
 
-            print(f"App.stop:{self.stop}\n")
+            # print(f"App.stop:{self.stop}\n")
             jietu1 = self.getshot(self.savedata["jtnamearea"])
             npjtrgb = np.array(jietu1)
             npjtbgr = cv2.cvtColor(npjtrgb, cv2.COLOR_RGB2BGR)
@@ -277,7 +277,7 @@ class Appwindow(tk.Tk):
                 )
                 maxpct = np.max(pct)
                 # print(f"{aim}匹配度:{pct}\n最大匹配度:{maxpct}")
-                print(f"{aim}最大匹配度:{maxpct}")
+                # print(f"{aim}最大匹配度:{maxpct}")
                 if maxpct > self.jingdu:
                     aimpct = np.where(pct == maxpct)  # 获得符合的索引 等价于坐标
                     x = aimpct[1][0]
@@ -505,6 +505,8 @@ class Appwindow(tk.Tk):
             self.sonwindow1.title("目标优先级列表")
             self.sonwindow1.geometry("700x1200")
 
+            self.sonwindow1.bind("<Control-s>",self.yxjused)
+
             self.sontreev1 = ttk.Treeview(
                 self.sonwindow1,
                 columns=("xh","name","yxj"),#每一列的名字****区分于标题****
@@ -543,7 +545,7 @@ class Appwindow(tk.Tk):
                 data = (i+1,name,yxj)
                 self.sontreev1.insert("","end",values=data,tags=("fixed_height",))
 
-    def yxjused(self):
+    def yxjused(self,event=None): # event接受键盘传入
         self.youxianjibiao = {}
         for item in self.sontreev1.get_children():#获取的是索引
             data = self.sontreev1.item(item,"value")
@@ -611,10 +613,12 @@ class Appwindow(tk.Tk):
         gui.moveTo(postion)
 
     def modchoose(self):
+
         self.sonwindow2 = tk.Toplevel(self)#toplevel是辅助窗口(也可以独立存在)，可以绑定tk，而一般一个进程只有一个一个TK主窗口
         #用tk.TK就是让圆形选框根据TK的属性执行和写入 体现就是没有效果
         self.sonwindow2.geometry("630x1250")
         self.sonwindow2.title("全局设置")
+        self.sonwindow2.bind("<Control-s>", self.setused)
 
         modoptions = ["正常模式(默认)", "调试模式"]
         # 圆形选框
@@ -635,7 +639,7 @@ class Appwindow(tk.Tk):
         self.txtbox20.place(x=180,y=155)
         self.txtbox20.insert("1.0",str(self.jingdu))
 
-        self.sbtn20 = tk.Button(self.sonwindow2, text="保存设置", width=10, fg="red", bg="#FFFFFF", command=self.setused)
+        self.sbtn20 = tk.Button(self.sonwindow2, text="保存设置(s)", width=10, fg="red", bg="#FFFFFF", command=self.setused)
         self.sbtn20.config(relief="raised", borderwidth=5)
         self.sbtn20.pack()
         self.sbtn20.place(x=110, y=1125)
@@ -837,7 +841,7 @@ class Appwindow(tk.Tk):
             self.txtbox211.delete("1.0", tk.END)
             self.txtbox211.insert("1.0", str(morenmemoryset["atuoclick"]))
 
-    def setused(self):
+    def setused(self,event=None): #绑定按键触发时会有名为event参数传入，所以要定义接受
         # print("精度修改使用")
         with open(configpath, "w") as savefile:
             if self.txtbox21.get("1.0",tk.END) != "":
@@ -882,27 +886,27 @@ class Appwindow(tk.Tk):
                 self.savedata["mousemove3"] = val7
                 print("攻击按钮(下)保存成功")
 
-            if self.txtbox28.get("1.0", tk.END) != "":
+            if self.txtbox28.get("1.0",tk.END) != "":
                 val8 = ast.literal_eval(self.txtbox28.get("1.0",tk.END))
-                # 打印(val6)
+                # print(val6)
                 self.savedata["repeatbtn"] = val8
                 print("刷新按钮保存成功")
 
-            if self.txtbox29.get("1.0", tk.END) != "":
+            if self.txtbox29.get("1.0",tk.END) != "":
                 val9 = ast.literal_eval(self.txtbox29.get("1.0",tk.END))
-                # 打印(val6)
+                # print(val6)
                 self.savedata["surebtn"] = val9
                 print("确认按钮保存成功")
 
-            if self.txtbox210.get("1.0", tk.END) != "":
-                val10 = ast.literal_eval(self.txtbox210.get("1.0", tk.END))
-                # 打印(val6)
+            if self.txtbox210.get("1.0",tk.END) != "":
+                val10 = ast.literal_eval(self.txtbox210.get("1.0",tk.END))
+                # print(val6)
                 self.savedata["jtatuobtnarea"] = val10
                 print("自动按钮保存成功")
 
-            if self.txtbox211.get("1.0", tk.END) != "":
-                val11 = ast.literal_eval(self.txtbox211.get("1.0", tk.END))
-                # 打印(val6)
+            if self.txtbox211.get("1.0",tk.END) != "":
+                val11 = ast.literal_eval(self.txtbox211.get("1.0",tk.END))
+                # print(val6)
                 self.savedata["atuoclick"] = val11
                 print("自动按钮点击位置保存成功")
 
@@ -910,16 +914,17 @@ class Appwindow(tk.Tk):
             self.zxline = self.savedata["jtbarea3"][1] + 35
 
             json.dump(self.savedata, savefile)
+            self.unbind("<Control-s")
             savefile.close()
 
-        尝试:
+        try:
             rejd = float(self.txtbox20.get("1.0", tk.END))
-            # 打印(rejd)
+            # print(rejd)
             if 0 <= rejd <= 1:
                 self.jingdu = rejd
                 print("精度修改成功")
-                self sonwindow2.destroy()
-            否则:
+                self.sonwindow2.destroy()
+            else:
                 tk.messagebox.showerror("输入错误","输入仅限0-1的数字")
         except ValueError as valerr:
             tk.messagebox.showerror("输入错误",f"输入仅限0-1的数字:{valerr}")
@@ -928,6 +933,6 @@ class Appwindow(tk.Tk):
         print(self.mod.get())
         self.biaoti2.config(text=f"当前模式:{self.modoptions[self.mod.get()-1]}")
 
-App = Appwindow() # 创建窗口
+App = Appwindow()#创建窗口
 App.protocol("WM_DELETE_WINDOW", Appclose)  # 绑定关闭窗口事件
 App.mainloop()#保证窗口的持续

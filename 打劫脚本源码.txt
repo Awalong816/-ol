@@ -41,7 +41,6 @@ elif yxpath.endswith(".exe"):
 kufile = f"{basedir}\DJJBlocal_picku"
 configpath = f"{basedir}\DJJB_config.json"
 print(f"图片库文件路径:{kufile}")
-
 sserr = 0
 #检测路径是否存在
 if os.path.exists(kufile):#exists-所有范围
@@ -120,6 +119,9 @@ class Appwindow(tk.Tk):
         self.auto = tk.IntVar(value=0)
         self.auto.trace_add("write", self.atuopass)#变量追踪器，"write"表示被写入
         self.mod.trace_add("write", self.modcs)
+        #后续分辨率全局
+        self.screen_width = 0
+        self.screen_height = 0
 
         with open(configpath,"r") as savefile:
             self.savedata = json.load(savefile)
@@ -232,6 +234,7 @@ class Appwindow(tk.Tk):
         return jt
 
     def jtsb1(self):
+        print("开始识别")
         n = 0
         if self.mod.get() == 1:
             limit = 12000#正常模式保险
@@ -287,7 +290,7 @@ class Appwindow(tk.Tk):
                     abx = x + self.savedata["jtnamearea"][0]
                     aby = y + self.savedata["jtnamearea"][1]
                     abzuobiao = (abx, aby)
-                    print(f"绝对坐标:{abzuobiao}")
+                    # print(f"绝对坐标:{abzuobiao}")
                     # =====观测=====
                     # print(f"aimpct:{aimpct}")
                     # mbwidth = np.shape(nowmuban)[1]
@@ -384,7 +387,11 @@ class Appwindow(tk.Tk):
                 # else:
                 #     print(f"没有找到{aim}")
             time.sleep(0.25)
+            # print("刷新点击")
+            # print(self.savedata["repeatbtn"])
+            # print(f"life:{self.lifewindow}")
             gui.click(self.savedata["repeatbtn"])
+            # print("点击完成")
             time.sleep(0.5)
             n = n+1
 
@@ -397,6 +404,7 @@ class Appwindow(tk.Tk):
             self.after(1000, self.getlwindow, i - 1)
         else:
             self.lifewindow = gw.getActiveWindow()
+            print(self.lifewindow)
             if self.lifewindow.title == "火影忍者online":
                 # self.yuanshang = self.lifewindow.top
                 # self.yuanzuo = self.lifewindow.left
@@ -409,11 +417,32 @@ class Appwindow(tk.Tk):
                 self.btn2["state"] = tk.NORMAL
                 self.btn2["text"] = f"获取窗口"
                 #规范化窗口
-                self.lifewindow.top = 38
-                self.lifewindow.left = 160
-                self.lifewindow.width = 2804
-                self.lifewindow.height = 1740
-                print("窗口规范化")
+                #自适应分辨率
+                try:
+                    self.screen_width, self.screen_height = gui.size()
+                    print(f"\n*屏幕分辨率:{self.screen_width}x{self.screen_height}\n")
+                    print(f"自适应定位居中窗口")
+
+                    # 计算缩放比例
+                    scale_x = self.screen_width / 3072
+                    scale_y = self.screen_height / 1920
+
+                    self.lifewindow.top = round(38 * scale_y)
+                    self.lifewindow.left = round(160 * scale_x)
+                    self.lifewindow.width = round(2804 * scale_x)
+                    self.lifewindow.height = round(1740 * scale_y)
+
+                    # print(f"窗口位置: 左{self.lifewindow.left} 上{self.lifewindow.top}")
+                    # print(f"窗口大小: {self.lifewindow.width}x{self.lifewindow.height}")
+
+                except Exception as e:
+                    print(f"自适应调整失败: {e}")
+                    # 使用默认值作为备选
+                    self.lifewindow.top = 38
+                    self.lifewindow.left = 160
+                    self.lifewindow.width = 2804
+                    self.lifewindow.height = 1740
+
             else:
                 self.lifewindow = None
                 self.txtbox1.delete("1.0", tk.END)

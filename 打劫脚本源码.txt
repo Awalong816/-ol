@@ -235,6 +235,9 @@ class Appwindow(tk.Tk):
 
     def jtsb1(self):
         print("开始识别")
+        # cv2.imshow("",ssrgbnp)
+        # cv2.waitKey(0)
+        # exit(0)
         n = 0
         if self.mod.get() == 1:
             limit = 12000#正常模式保险
@@ -467,21 +470,27 @@ class Appwindow(tk.Tk):
                 self.youxianjibiao = {}
                 atkaimlist = [] #在函数内就是局部变量
         if ty == 1:
-            filenum = len(os.listdir(kufile))  # 放进变量速度提升，但比算两次会多占用内存
+            file_list = os.listdir(kufile)
+            filenum = len(file_list)
             print(f"文件数量:{filenum}")
             if filenum == 0:
                 print(f"图片库文件<{kufile}>为空,请进行添加")
             else:
-                SSpath = kufile + "\\" + "SS.png"
-                atuobtnpath = kufile + "\\" + "atuobtn.png"
-                if os.path.exists(SSpath):
-                    ssrgbnp = cv2.imread(SSpath)
-                    # cv2.imshow("ss",ssrgbnp)
-                    # cv2.waitKey(0)
-                    for image in os.listdir(kufile):
-                        # print(type(image))
-                        if image.endswith((".png", ".jpg", ".jpeg", ".bwp")) and (image not in ["SS.png","atuobtn.png"]):  # cv2支持的图片格式 合集只能用元组
-                            atkaimlist.append(image)
+                SSpath = "SS.png"
+                atuobtnpath = "atuobtn.png"
+                # print(file_list)
+                # exit()
+                if SSpath in file_list:
+                    try:
+                        ssrgbnp = cv2.imread(kufile+"\\"+SSpath)
+                    except Exception as err:
+                        print(f"SS图片读取失败:{err}")
+                        sserr = 1
+                        return
+                    file_list.remove(SSpath)
+                    for file in file_list:
+                        if file.endswith((".png", ".jpg", ".jpeg", ".bwp")) and file != atuobtnpath:
+                            atkaimlist.append(file)
                     print(f"目标名称:{atkaimlist}")
                 else:
                     print(f"***请先在图片库路径<{kufile}>预设一张点卷SS的图片，并命名为\"SS.png\"***")
@@ -502,7 +511,7 @@ class Appwindow(tk.Tk):
                     pic = pic[:-5]
                 self.aimmuban[pic] = muban
                 self.youxianjibiao[pic] = 1
-            print(f"名字和np数组字典:\n{self.aimmuban}")
+            # print(f"名字和np数组字典:\n{self.aimmuban}")
             print(f"优先级:{self.youxianjibiao}")
             print(f"完成,当前队列长度:{len(self.aimmuban)}")#[[[点像素值]单个图像]组]
         # n = 0
